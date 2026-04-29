@@ -1,0 +1,1 @@
+{"terminal.integrated.env.linux": {"PATH": "/home/linuxbrew/.linuxbrew/bin:${env:PATH}"}}

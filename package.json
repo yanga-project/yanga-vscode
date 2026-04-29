@@ -1,0 +1,187 @@
+{
+  "name": "yanga-vscode",
+  "displayName": "Yanga",
+  "publisher": "yanga-project",
+  "description": "Sidebar UI for Software Product Line projects, pick variant and platform, browse components, build without leaving the editor.",
+  "version": "0.0.0-development",
+  "license": "MIT",
+  "icon": "media/yanga.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yanga-project/yanga-vscode.git"
+  },
+  "homepage": "https://github.com/yanga-project/yanga-vscode#readme",
+  "bugs": {
+    "url": "https://github.com/yanga-project/yanga-vscode/issues"
+  },
+  "keywords": [
+    "yanga",
+    "spl",
+    "software product line",
+    "variant",
+    "build",
+    "embedded",
+    "cmake"
+  ],
+  "engines": {
+    "vscode": "^1.116.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Yanga",
+      "properties": {
+        "yanga.executablePath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Path to the `yanga` executable. When empty, the extension uses `${workspaceFolder}/.venv/bin/yanga` on macOS/Linux or `${workspaceFolder}/.venv/Scripts/yanga.exe` on Windows if it exists, falling back to `yanga` on the system `PATH`."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "yanga-explorer",
+          "title": "Yanga",
+          "icon": "media/yanga.svg"
+        }
+      ]
+    },
+    "views": {
+      "yanga-explorer": [
+        {
+          "id": "yanga.projectTree",
+          "name": "Yanga"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "yanga.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.buildVariant",
+        "title": "Build Variant",
+        "icon": "$(play)",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.cleanVariant",
+        "title": "Clean Variant",
+        "icon": "$(trash)",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.buildComponent",
+        "title": "Build Component",
+        "icon": "$(play)",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.selectVariant",
+        "title": "Select Variant",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.selectPlatform",
+        "title": "Select Platform",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.selectBuildTarget",
+        "title": "Select Build Target",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.selectBuildType",
+        "title": "Select Build Type",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.componentsViewAsTree",
+        "title": "View Components as Tree",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.componentsViewAsFlat",
+        "title": "View Components as Flat List",
+        "category": "Yanga"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "yanga.refresh",
+          "when": "view == yanga.projectTree",
+          "group": "navigation"
+        },
+        {
+          "command": "yanga.componentsViewAsTree",
+          "when": "view == yanga.projectTree && yanga.componentsView == 'flat'"
+        },
+        {
+          "command": "yanga.componentsViewAsFlat",
+          "when": "view == yanga.projectTree && yanga.componentsView == 'tree'"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "yanga.buildComponent",
+          "when": "view == yanga.projectTree && viewItem == yangaComponent",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "prepare": "husky",
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "mocha",
+    "test:integration": "vscode-test"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.0",
+    "@types/minimatch": "^5.1.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.116.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.27.3",
+    "eslint": "^9.39.3",
+    "husky": "^9.0.0",
+    "mocha": "^11.7.5",
+    "npm-run-all": "^4.1.5",
+    "semantic-release": "^24.2.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "minimatch": "^10.2.5"
+  }
+}
