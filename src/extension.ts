@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { ProjectState } from './model/ProjectState';
-import { ComponentsViewMode, YangaTreeDataProvider, YangaTreeItem } from './ui/YangaTreeDataProvider';
+import { YangaTreeDataProvider } from './ui/YangaTreeDataProvider';
 import { DiagnosticsManager } from './ui/DiagnosticsManager';
 import { StatusBarManager } from './ui/StatusBarManager';
 import { WatcherManager } from './ui/WatcherManager';
@@ -10,10 +11,20 @@ import { YangaCli } from './yanga/YangaCli';
 
 let outputChannel: vscode.OutputChannel;
 
+function expandPath(p: string): string {
+    // The yanga executable path is passed through as a quoted shell argument, so
+    // `~` and `${userHome}` need to be expanded here — the shell would leave
+    // them literal inside quotes.
+    if (p === '~' || p.startsWith('~/')) {
+        return path.join(os.homedir(), p.slice(1));
+    }
+    return p.replace(/\$\{userHome\}/g, os.homedir());
+}
+
 function resolveExecutablePath(projectDir: string): string {
     const configured = vscode.workspace.getConfiguration('yanga').get<string>('executablePath', '').trim();
     if (configured) {
-        return configured;
+        return expandPath(configured);
     }
     if (projectDir) {
         const venvBinary = process.platform === 'win32'
@@ -36,17 +47,18 @@ export async function activate(context: vscode.ExtensionContext) {
 
     outputChannel = vscode.window.createOutputChannel("Yanga");
     context.subscriptions.push(outputChannel);
-    
+
     outputChannel.appendLine(`[Debug] Extension activated.`);
     outputChannel.appendLine(`[Debug] Workspace folders: ${workspaceFolders ? workspaceFolders.map(f => f.uri.fsPath).join(', ') : 'None'}`);
     outputChannel.appendLine(`[Debug] projectDir resolved to: ${projectDir}`);
     outputChannel.appendLine(`[Debug] executablePath resolved to: ${executablePath}`);
 
-    // 1. Load saved selections from workspaceState
     state.activeVariant = context.workspaceState.get<string | null>('yanga.activeVariant', null);
     state.activePlatform = context.workspaceState.get<string | null>('yanga.activePlatform', null);
-    state.activeBuildTarget = context.workspaceState.get<string | null>('yanga.activeBuildTarget', null);
     state.activeBuildType = context.workspaceState.get<string | null>('yanga.activeBuildType', null);
+    state.activeVariantBuildTarget = context.workspaceState.get<string | null>('yanga.activeVariantBuildTarget', null);
+    state.activeComponent = context.workspaceState.get<string | null>('yanga.activeComponent', null);
+    state.activeComponentBuildTarget = context.workspaceState.get<string | null>('yanga.activeComponentBuildTarget', null);
 
     const diagnosticsManager = new DiagnosticsManager();
     context.subscriptions.push({ dispose: () => diagnosticsManager.dispose() });
@@ -63,10 +75,7 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push({ dispose: () => watcherManager!.dispose() });
     }
 
-    const treeProvider = new YangaTreeDataProvider(state, projectDir);
-    const initialMode = context.workspaceState.get<ComponentsViewMode>('yanga.componentsView', 'tree');
-    treeProvider.setViewMode(initialMode);
-    await vscode.commands.executeCommand('setContext', 'yanga.componentsView', initialMode);
+    const treeProvider = new YangaTreeDataProvider(state);
 
     const treeView = vscode.window.createTreeView('yanga.projectTree', {
         treeDataProvider: treeProvider,
@@ -74,17 +83,23 @@ export async function activate(context: vscode.ExtensionContext) {
     });
     context.subscriptions.push(treeView);
 
-    const setComponentsView = async (mode: ComponentsViewMode) => {
-        await context.workspaceState.update('yanga.componentsView', mode);
-        await vscode.commands.executeCommand('setContext', 'yanga.componentsView', mode);
-        treeProvider.setViewMode(mode);
-    };
-    context.subscriptions.push(vscode.commands.registerCommand('yanga.componentsViewAsTree', () => setComponentsView('tree')));
-    context.subscriptions.push(vscode.commands.registerCommand('yanga.componentsViewAsFlat', () => setComponentsView('flat')));
-
-    // Register refresh command
     context.subscriptions.push(vscode.commands.registerCommand('yanga.refresh', async () => {
         await fetchAndUpdateModel(cli, state, treeProvider, context, diagnosticsManager, statusBar, watcherManager, projectDir);
+    }));
+
+    // React to settings changes without forcing a window reload. The executable
+    // path is the only setting that needs live re-resolution today; treat any
+    // change to it as "swap the path and refresh the model".
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async event => {
+        if (!event.affectsConfiguration('yanga.executablePath')) {
+            return;
+        }
+        const newPath = resolveExecutablePath(projectDir);
+        cli.setExecutablePath(newPath);
+        outputChannel.appendLine(`[Debug] yanga.executablePath changed; now using: ${newPath}`);
+        if (projectDir) {
+            await fetchAndUpdateModel(cli, state, treeProvider, context, diagnosticsManager, statusBar, watcherManager, projectDir);
+        }
     }));
 
     // Kick off the initial fetch without blocking activation. VS Code expects
@@ -99,47 +114,67 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // SELECTION COMMANDS
+    const pickFromList = async (placeHolder: string, items: string[]): Promise<string | undefined> => {
+        if (items.length === 0) {
+            return undefined;
+        }
+        return vscode.window.showQuickPick(items, { placeHolder });
+    };
+
     context.subscriptions.push(vscode.commands.registerCommand('yanga.selectVariant', async () => {
-        if (!state.model) {return;}
-        const variants = state.model.variants.map(v => v.name);
-        const selected = await vscode.window.showQuickPick(variants, { placeHolder: 'Select Variant' });
+        if (!state.model) { return; }
+        const selected = await pickFromList('Select Variant', state.model.variants.map(v => v.name));
         if (selected) {
             state.setVariant(selected);
-            updateStateAndRefresh(state, treeProvider, context, statusBar);
+            persistAndRefresh(state, treeProvider, context, statusBar);
         }
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('yanga.selectPlatform', async () => {
-        if (!state.model) {return;}
-        const platforms = state.model.platforms.map(p => p.name);
-        const selected = await vscode.window.showQuickPick(platforms, { placeHolder: 'Select Platform' });
+        if (!state.model) { return; }
+        const selected = await pickFromList('Select Platform', state.model.platforms.map(p => p.name));
         if (selected) {
             state.setPlatform(selected);
-            updateStateAndRefresh(state, treeProvider, context, statusBar);
-        }
-    }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('yanga.selectBuildTarget', async () => {
-        if (!state.model || !state.activePlatform) {return;}
-        const p = state.model.platforms.find(x => x.name === state.activePlatform);
-        if (!p || p.build_targets.length === 0) {return;}
-        
-        const selected = await vscode.window.showQuickPick(p.build_targets, { placeHolder: 'Select Build Target' });
-        if (selected) {
-            state.setBuildTarget(selected);
-            updateStateAndRefresh(state, treeProvider, context, statusBar);
+            persistAndRefresh(state, treeProvider, context, statusBar);
         }
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('yanga.selectBuildType', async () => {
-        if (!state.model || !state.activePlatform) {return;}
-        const p = state.model.platforms.find(x => x.name === state.activePlatform);
-        if (!p || p.build_types.length === 0) {return;}
-        
-        const selected = await vscode.window.showQuickPick(p.build_types, { placeHolder: 'Select Build Type' });
+        if (!state.model || !state.activePlatform) { return; }
+        const platform = state.model.platforms.find(p => p.name === state.activePlatform);
+        const selected = await pickFromList('Select Build Type', platform?.build_types ?? []);
         if (selected) {
             state.setBuildType(selected);
-            updateStateAndRefresh(state, treeProvider, context, statusBar);
+            persistAndRefresh(state, treeProvider, context, statusBar);
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('yanga.selectVariantBuildTarget', async () => {
+        if (!state.model || !state.activePlatform) { return; }
+        const platform = state.model.platforms.find(p => p.name === state.activePlatform);
+        const selected = await pickFromList('Select Variant Build Target', state.effectiveVariantTargets(platform));
+        if (selected) {
+            state.setVariantBuildTarget(selected);
+            persistAndRefresh(state, treeProvider, context, statusBar);
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('yanga.selectComponentBuildTarget', async () => {
+        if (!state.model || !state.activePlatform) { return; }
+        const platform = state.model.platforms.find(p => p.name === state.activePlatform);
+        const selected = await pickFromList('Select Component Build Target', state.effectiveComponentTargets(platform));
+        if (selected) {
+            state.setComponentBuildTarget(selected);
+            persistAndRefresh(state, treeProvider, context, statusBar);
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('yanga.selectComponent', async () => {
+        if (!state.model) { return; }
+        const selected = await pickFromList('Select Component', state.getVisibleComponents().map(c => c.name));
+        if (selected) {
+            state.setComponent(selected);
+            persistAndRefresh(state, treeProvider, context, statusBar);
         }
     }));
 
@@ -165,7 +200,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 variant: state.activeVariant,
                 platform: state.activePlatform,
                 buildType: state.activeBuildType || undefined,
-                target: target || state.activeBuildTarget || undefined,
+                target: target || undefined,
                 component: component
             }, projectDir, (data) => outputChannel.append(data));
             statusBar.showBuildResult(exitCode === 0);
@@ -185,25 +220,29 @@ export async function activate(context: vscode.ExtensionContext) {
     };
 
     context.subscriptions.push(vscode.commands.registerCommand('yanga.buildVariant', async () => {
-        await runYangaCommand('Build Variant');
+        await runYangaCommand('Build Variant', state.activeVariantBuildTarget || undefined);
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('yanga.cleanVariant', async () => {
         await runYangaCommand('Clean Variant', 'clean');
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('yanga.buildComponent', async (treeItem?: YangaTreeItem) => {
-        if (treeItem && treeItem.label) {
-            await runYangaCommand('Build Component', undefined, treeItem.label.toString());
+    context.subscriptions.push(vscode.commands.registerCommand('yanga.buildComponent', async () => {
+        if (!state.activeComponent) {
+            vscode.window.showErrorMessage('No component selected.');
+            return;
         }
+        await runYangaCommand('Build Component', state.activeComponentBuildTarget || undefined, state.activeComponent);
     }));
 }
 
-function updateStateAndRefresh(state: ProjectState, treeProvider: YangaTreeDataProvider, context: vscode.ExtensionContext, statusBar: StatusBarManager) {
+function persistAndRefresh(state: ProjectState, treeProvider: YangaTreeDataProvider, context: vscode.ExtensionContext, statusBar: StatusBarManager) {
     context.workspaceState.update('yanga.activeVariant', state.activeVariant);
     context.workspaceState.update('yanga.activePlatform', state.activePlatform);
-    context.workspaceState.update('yanga.activeBuildTarget', state.activeBuildTarget);
     context.workspaceState.update('yanga.activeBuildType', state.activeBuildType);
+    context.workspaceState.update('yanga.activeVariantBuildTarget', state.activeVariantBuildTarget);
+    context.workspaceState.update('yanga.activeComponent', state.activeComponent);
+    context.workspaceState.update('yanga.activeComponentBuildTarget', state.activeComponentBuildTarget);
     treeProvider.refresh();
     statusBar.update();
 }
@@ -222,7 +261,7 @@ async function fetchAndUpdateModel(
     if (result.exitCode === 0 && result.model) {
         state.updateModel(result.model);
         treeProvider.setPlaceholder(null);
-        updateStateAndRefresh(state, treeProvider, context, statusBar);
+        persistAndRefresh(state, treeProvider, context, statusBar);
         diagnosticsManager.updateDiagnostics(projectDir, result.model.diagnostics);
         if (watcherManager) {
             watcherManager.updateWatchers(result.model);
@@ -238,4 +277,3 @@ async function fetchAndUpdateModel(
 }
 
 export function deactivate() {}
-

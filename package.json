@@ -39,7 +39,7 @@
           "type": "string",
           "default": "",
           "scope": "machine-overridable",
-          "markdownDescription": "Path to the `yanga` executable. When empty, the extension uses `${workspaceFolder}/.venv/bin/yanga` on macOS/Linux or `${workspaceFolder}/.venv/Scripts/yanga.exe` on Windows if it exists, falling back to `yanga` on the system `PATH`."
+          "markdownDescription": "Path to the `yanga` executable. When empty, the extension uses `${workspaceFolder}/.venv/bin/yanga` on macOS/Linux or `${workspaceFolder}/.venv/Scripts/yanga.exe` on Windows if it exists, falling back to `yanga` on the system `PATH`. Supports `~` and `${userHome}` expansion. Changes apply immediately without reloading the window."
         }
       }
     },
@@ -96,23 +96,23 @@
         "category": "Yanga"
       },
       {
-        "command": "yanga.selectBuildTarget",
-        "title": "Select Build Target",
-        "category": "Yanga"
-      },
-      {
         "command": "yanga.selectBuildType",
         "title": "Select Build Type",
         "category": "Yanga"
       },
       {
-        "command": "yanga.componentsViewAsTree",
-        "title": "View Components as Tree",
+        "command": "yanga.selectVariantBuildTarget",
+        "title": "Select Variant Build Target",
         "category": "Yanga"
       },
       {
-        "command": "yanga.componentsViewAsFlat",
-        "title": "View Components as Flat List",
+        "command": "yanga.selectComponent",
+        "title": "Select Component",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.selectComponentBuildTarget",
+        "title": "Select Component Build Target",
         "category": "Yanga"
       }
     ],
@@ -122,21 +122,6 @@
           "command": "yanga.refresh",
           "when": "view == yanga.projectTree",
           "group": "navigation"
-        },
-        {
-          "command": "yanga.componentsViewAsTree",
-          "when": "view == yanga.projectTree && yanga.componentsView == 'flat'"
-        },
-        {
-          "command": "yanga.componentsViewAsFlat",
-          "when": "view == yanga.projectTree && yanga.componentsView == 'tree'"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "yanga.buildComponent",
-          "when": "view == yanga.projectTree && viewItem == yangaComponent",
-          "group": "inline"
         }
       ]
     }

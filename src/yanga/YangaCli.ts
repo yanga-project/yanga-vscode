@@ -1,15 +1,20 @@
 import { exec, spawn, ExecException, ChildProcess } from 'child_process';
 import { IYangaRunner, YangaInfoResult, YangaRunOptions } from './YangaRunner';
+import { YangaProjectModel } from './schema';
 
 export type ExecFunction = (command: string, options: any, callback: (error: ExecException | null, stdout: string, stderr: string) => void) => void;
 export type SpawnFunction = (command: string, args: string[], options: any) => ChildProcess;
 
 export class YangaCli implements IYangaRunner {
     constructor(
-        private readonly executablePath: string = 'yanga',
+        private executablePath: string = 'yanga',
         private readonly execFn: ExecFunction = exec,
         private readonly spawnFn: SpawnFunction = spawn
     ) {}
+
+    public setExecutablePath(path: string): void {
+        this.executablePath = path;
+    }
 
     public async info(projectDir?: string): Promise<YangaInfoResult> {
         return new Promise((resolve) => {
@@ -29,7 +34,7 @@ export class YangaCli implements IYangaRunner {
                     const jsonEnd = stdout.lastIndexOf('}');
                     if (jsonStart !== -1 && jsonEnd !== -1) {
                         const jsonStr = stdout.substring(jsonStart, jsonEnd + 1);
-                        result.model = JSON.parse(jsonStr);
+                        result.model = normalizeModel(JSON.parse(jsonStr));
                     } else if (stdout.trim()) {
                         throw new Error("No JSON object found in output");
                     }
@@ -89,4 +94,29 @@ export class YangaCli implements IYangaRunner {
             });
         });
     }
+}
+
+/**
+ * Bring legacy `yanga info` payloads (schema 1.0: number version, flat-array
+ * build_targets) onto the v1.1 shape so the rest of the extension can
+ * uniformly read structured targets and a string version. The extension stays
+ * forward-compatible with the older yanga release this way.
+ */
+function normalizeModel(raw: any): YangaProjectModel {
+    if (typeof raw.schema_version === 'number') {
+        raw.schema_version = raw.schema_version === 1 ? '1.0' : String(raw.schema_version);
+    }
+    for (const p of raw.platforms ?? []) {
+        if (Array.isArray(p.build_targets)) {
+            // Pre-1.1: a flat list applied to both scopes; map to `generic`.
+            p.build_targets = { generic: p.build_targets, variant: [], component: [] };
+        } else if (p.build_targets === null || p.build_targets === undefined || typeof p.build_targets !== 'object') {
+            p.build_targets = { generic: [], variant: [], component: [] };
+        } else {
+            p.build_targets.generic = p.build_targets.generic ?? [];
+            p.build_targets.variant = p.build_targets.variant ?? [];
+            p.build_targets.component = p.build_targets.component ?? [];
+        }
+    }
+    return raw as YangaProjectModel;
 }
