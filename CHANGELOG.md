@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/yanga-project/yanga-vscode/compare/v1.0.0...v1.1.0) (2026-05-01)
+
+
+### Bug Fixes
+
+* extension integration tests have wrong expectations ([5e1529f](https://github.com/yanga-project/yanga-vscode/commit/5e1529fb8831abbad5488e0ccd36aa884629b13b))
+
+
+### Features
+
+* refactor component view and support json scheme 1.1 ([92e04ca](https://github.com/yanga-project/yanga-vscode/commit/92e04ca8813932c2add376beda93e012f2b316a2))
+
 # 1.0.0 (2026-04-29)
 
 

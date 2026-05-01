@@ -3,7 +3,7 @@
   "displayName": "Yanga",
   "publisher": "yanga-project",
   "description": "Sidebar UI for Software Product Line projects, pick variant and platform, browse components, build without leaving the editor.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "icon": "media/yanga.png",
   "repository": {
