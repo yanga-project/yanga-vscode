@@ -11,15 +11,20 @@ suite('Extension Integration Test Suite', () => {
 
         const commands = await vscode.commands.getCommands(true);
         
-        assert.ok(commands.includes('yanga.refresh'));
-        assert.ok(commands.includes('yanga.buildVariant'));
-        assert.ok(commands.includes('yanga.cleanVariant'));
-        assert.ok(commands.includes('yanga.buildComponent'));
-        assert.ok(commands.includes('yanga.selectVariant'));
-        assert.ok(commands.includes('yanga.selectPlatform'));
-        assert.ok(commands.includes('yanga.selectBuildTarget'));
-        assert.ok(commands.includes('yanga.selectBuildType'));
-        assert.ok(commands.includes('yanga.componentsViewAsTree'));
-        assert.ok(commands.includes('yanga.componentsViewAsFlat'));
+        const expected = [
+            'yanga.refresh',
+            'yanga.buildVariant',
+            'yanga.cleanVariant',
+            'yanga.buildComponent',
+            'yanga.selectVariant',
+            'yanga.selectPlatform',
+            'yanga.selectBuildType',
+            'yanga.selectVariantBuildTarget',
+            'yanga.selectComponent',
+            'yanga.selectComponentBuildTarget',
+        ];
+        for (const id of expected) {
+            assert.ok(commands.includes(id), `missing command: ${id}`);
+        }
     });
 });
