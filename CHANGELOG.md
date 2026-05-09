@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/yanga-project/yanga-vscode/compare/v1.1.0...v1.2.0) (2026-05-09)
+
+
+### Features
+
+* add pristine build option ([683434c](https://github.com/yanga-project/yanga-vscode/commit/683434cd52823170c0dba6ef2fe3ed1d12903414))
+
 # [1.1.0](https://github.com/yanga-project/yanga-vscode/compare/v1.0.0...v1.1.0) (2026-05-01)
 
 
