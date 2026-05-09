@@ -25,19 +25,20 @@ The configured executable (default: `yanga`) must support:
 
 Reads the project on disk and emits the project model as JSON on stdout. The extension parses everything between the first `{` and the last `}`, so leading log lines are tolerated.
 
-#### `yanga run --not-interactive --variant <V> --platform <P> [--build-type <T>] [--target <X>] [--component <C>] [--project-dir <DIR>]`
+#### `yanga run --not-interactive --variant <V> --platform <P> [--build-type <T>] [--target <X>] [--component <C>] [--pristine] [--project-dir <DIR>]`
 
 Executes a build (or clean) with the chosen scope. Output goes to stdout/stderr and is streamed into the **Yanga** output channel. The extension only inspects the process exit code (`0` = success).
+
+`--pristine` recursively deletes the variant build directory before running. Reaches the wire whenever the **Pristine** toggle in the variant section is on. Applies to Build actions only — Clean actions wipe by definition, so pristine is omitted there.
 
 Argument flow from the UI:
 
 | UI action | `yanga run` arguments |
 |---|---|
-| Build (variant section) | `--variant V --platform P [--build-type T] [--target <selected variant build target>]` |
+| Build (variant section) | `--variant V --platform P [--build-type T] [--target <selected variant build target>] [--pristine]` |
 | Clean (variant section) | `--variant V --platform P [--build-type T] --target clean` |
-| Build (component section) | `--variant V --platform P [--build-type T] --component C [--target <selected component build target>]` |
-
-Component-scope `clean` is intentionally not exposed — the reference backend does not generate per-component clean targets.
+| Build (component section) | `--variant V --platform P [--build-type T] --component C [--target <selected component build target>] [--pristine]` |
+| Clean (component section) | `--variant V --platform P [--build-type T] --component C --target clean` |
 
 ### The project model
 
@@ -152,6 +153,8 @@ When `yanga.executablePath` is empty, the extension looks for, in order:
 | `Yanga: Build Variant` | Run `yanga run` for the active variant/platform/build-type, with `--target` set to the active *variant* build target. |
 | `Yanga: Clean Variant` | Same as Build Variant, with `--target=clean`. |
 | `Yanga: Build Component` | Build the active component within the active variant/platform, with `--target` set to the active *component* build target. |
+| `Yanga: Clean Component` | Same as Build Component, with `--target=clean`. Backed by the per-component clean target the reference backend emits. |
+| `Yanga: Toggle Pristine Build` | Flip the variant section's Pristine toggle. When on, subsequent Build actions append `--pristine` so the variant build directory is wiped before running. State persists per workspace. |
 | `Yanga: Select Variant` / `Platform` / `Build Type` | Quick-pick selectors for the variant section. |
 | `Yanga: Select Variant Build Target` | Quick-pick from the variant-scope effective targets (`generic ∪ variant`). |
 | `Yanga: Select Component` | Quick-pick from the components in scope for the active variant/platform. |
