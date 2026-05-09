@@ -78,6 +78,24 @@ suite('ProjectState Test Suite', () => {
         assert.strictEqual(state.activeBuildType, 'Release');
     });
 
+    test('pristine defaults to false and toggles via setPristine', () => {
+        const state = new ProjectState();
+
+        assert.strictEqual(state.activePristine, false);
+        state.setPristine(true);
+        assert.strictEqual(state.activePristine, true);
+        state.setPristine(false);
+        assert.strictEqual(state.activePristine, false);
+    });
+
+    test('pristine survives updateModel (no validation reset)', () => {
+        const state = new ProjectState();
+        state.setPristine(true);
+        state.updateModel(mockModel);
+
+        assert.strictEqual(state.activePristine, true);
+    });
+
     test('computes three-source component union correctly', () => {
         const state = new ProjectState();
         state.updateModel(mockModel); // defaults to VariantA / gtest

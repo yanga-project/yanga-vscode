@@ -12,6 +12,7 @@ export interface YangaRunOptions {
     buildType?: string;
     target?: string;
     component?: string;
+    pristine?: boolean;
 }
 
 export interface IYangaRunner {

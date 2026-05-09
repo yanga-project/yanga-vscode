@@ -16,6 +16,8 @@ suite('Extension Integration Test Suite', () => {
             'yanga.buildVariant',
             'yanga.cleanVariant',
             'yanga.buildComponent',
+            'yanga.cleanComponent',
+            'yanga.togglePristine',
             'yanga.selectVariant',
             'yanga.selectPlatform',
             'yanga.selectBuildType',

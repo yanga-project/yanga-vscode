@@ -9,6 +9,7 @@ export class ProjectState {
     public activeVariantBuildTarget: string | null = null;
     public activeComponent: string | null = null;
     public activeComponentBuildTarget: string | null = null;
+    public activePristine: boolean = false;
 
     public updateModel(newModel: YangaProjectModel) {
         this.model = newModel;
@@ -39,6 +40,10 @@ export class ProjectState {
 
     public setComponentBuildTarget(target: string) {
         this.activeComponentBuildTarget = target;
+    }
+
+    public setPristine(pristine: boolean) {
+        this.activePristine = pristine;
     }
 
     /**

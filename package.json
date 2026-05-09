@@ -86,6 +86,17 @@
         "category": "Yanga"
       },
       {
+        "command": "yanga.cleanComponent",
+        "title": "Clean Component",
+        "icon": "$(trash)",
+        "category": "Yanga"
+      },
+      {
+        "command": "yanga.togglePristine",
+        "title": "Toggle Pristine Build",
+        "category": "Yanga"
+      },
+      {
         "command": "yanga.selectVariant",
         "title": "Select Variant",
         "category": "Yanga"

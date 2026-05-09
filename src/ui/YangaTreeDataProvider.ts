@@ -83,6 +83,7 @@ export class YangaTreeDataProvider implements vscode.TreeDataProvider<YangaTreeI
             this.selector('Platform', 'yanga.selectPlatform', this.state.activePlatform),
             this.selector('Build Type', 'yanga.selectBuildType', this.buildTypeDescription()),
             this.selector('Build Target', 'yanga.selectVariantBuildTarget', this.state.activeVariantBuildTarget),
+            this.toggle('Pristine', 'yanga.togglePristine', this.state.activePristine),
             this.action('Build', 'yanga.buildVariant', 'play'),
             this.action('Clean', 'yanga.cleanVariant', 'trash')
         ];
@@ -96,8 +97,8 @@ export class YangaTreeDataProvider implements vscode.TreeDataProvider<YangaTreeI
         return [
             this.selector('Component', 'yanga.selectComponent', this.state.activeComponent),
             this.selector('Build Target', 'yanga.selectComponentBuildTarget', this.state.activeComponentBuildTarget),
-            // No Clean action: yanga does not generate a `<component>_clean` CMake target.
-            this.action('Build', 'yanga.buildComponent', 'play')
+            this.action('Build', 'yanga.buildComponent', 'play'),
+            this.action('Clean', 'yanga.cleanComponent', 'trash')
         ];
     }
 
@@ -121,6 +122,19 @@ export class YangaTreeDataProvider implements vscode.TreeDataProvider<YangaTreeI
             'yangaAction',
             { command, title: label },
             new vscode.ThemeIcon(icon)
+        );
+    }
+
+    private toggle(label: string, command: string, value: boolean): YangaTreeItem {
+        // Stateful row with click-to-toggle behavior. Mirrors the GUI's Pristine checkbox.
+        return new YangaTreeItem(
+            label,
+            vscode.TreeItemCollapsibleState.None,
+            'selector',
+            'yangaToggle',
+            { command, title: `Toggle ${label}` },
+            new vscode.ThemeIcon(value ? 'check' : 'circle-large-outline'),
+            value ? 'on' : 'off'
         );
     }
 

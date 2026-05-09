@@ -66,6 +66,9 @@ export class YangaCli implements IYangaRunner {
             if (options.component) {
                 args.push('--component', options.component);
             }
+            if (options.pristine) {
+                args.push('--pristine');
+            }
             if (projectDir) {
                 args.push('--project-dir', projectDir);
             }

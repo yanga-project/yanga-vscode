@@ -59,6 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
     state.activeVariantBuildTarget = context.workspaceState.get<string | null>('yanga.activeVariantBuildTarget', null);
     state.activeComponent = context.workspaceState.get<string | null>('yanga.activeComponent', null);
     state.activeComponentBuildTarget = context.workspaceState.get<string | null>('yanga.activeComponentBuildTarget', null);
+    state.activePristine = context.workspaceState.get<boolean>('yanga.activePristine', false);
 
     const diagnosticsManager = new DiagnosticsManager();
     context.subscriptions.push({ dispose: () => diagnosticsManager.dispose() });
@@ -180,7 +181,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // EXECUTION COMMANDS
     let buildInFlight = false;
-    const runYangaCommand = async (actionLabel: string, target?: string, component?: string) => {
+    const runYangaCommand = async (actionLabel: string, target?: string, component?: string, pristine?: boolean) => {
         if (!state.activeVariant || !state.activePlatform) {
             vscode.window.showErrorMessage('Variant and Platform must be selected before building.');
             return;
@@ -193,7 +194,8 @@ export async function activate(context: vscode.ExtensionContext) {
         buildInFlight = true;
         try {
             outputChannel.show(true);
-            outputChannel.appendLine(`\n[Yanga] ${actionLabel} ${state.activeVariant} / ${state.activePlatform}${component ? ' (component: ' + component + ')' : ''}...`);
+            const pristineSuffix = pristine ? ' [pristine]' : '';
+            outputChannel.appendLine(`\n[Yanga] ${actionLabel}${pristineSuffix} ${state.activeVariant} / ${state.activePlatform}${component ? ' (component: ' + component + ')' : ''}...`);
 
             statusBar.showBuildStarted();
             const exitCode = await cli.run({
@@ -201,7 +203,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 platform: state.activePlatform,
                 buildType: state.activeBuildType || undefined,
                 target: target || undefined,
-                component: component
+                component: component,
+                pristine: pristine
             }, projectDir, (data) => outputChannel.append(data));
             statusBar.showBuildResult(exitCode === 0);
 
@@ -220,10 +223,11 @@ export async function activate(context: vscode.ExtensionContext) {
     };
 
     context.subscriptions.push(vscode.commands.registerCommand('yanga.buildVariant', async () => {
-        await runYangaCommand('Build Variant', state.activeVariantBuildTarget || undefined);
+        await runYangaCommand('Build Variant', state.activeVariantBuildTarget || undefined, undefined, state.activePristine);
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('yanga.cleanVariant', async () => {
+        // Pristine intentionally not passed: clean wipes anyway, pristine semantics apply only to builds.
         await runYangaCommand('Clean Variant', 'clean');
     }));
 
@@ -232,7 +236,20 @@ export async function activate(context: vscode.ExtensionContext) {
             vscode.window.showErrorMessage('No component selected.');
             return;
         }
-        await runYangaCommand('Build Component', state.activeComponentBuildTarget || undefined, state.activeComponent);
+        await runYangaCommand('Build Component', state.activeComponentBuildTarget || undefined, state.activeComponent, state.activePristine);
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('yanga.cleanComponent', async () => {
+        if (!state.activeComponent) {
+            vscode.window.showErrorMessage('No component selected.');
+            return;
+        }
+        await runYangaCommand('Clean Component', 'clean', state.activeComponent);
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('yanga.togglePristine', async () => {
+        state.setPristine(!state.activePristine);
+        persistAndRefresh(state, treeProvider, context, statusBar);
     }));
 }
 
@@ -243,6 +260,7 @@ function persistAndRefresh(state: ProjectState, treeProvider: YangaTreeDataProvi
     context.workspaceState.update('yanga.activeVariantBuildTarget', state.activeVariantBuildTarget);
     context.workspaceState.update('yanga.activeComponent', state.activeComponent);
     context.workspaceState.update('yanga.activeComponentBuildTarget', state.activeComponentBuildTarget);
+    context.workspaceState.update('yanga.activePristine', state.activePristine);
     treeProvider.refresh();
     statusBar.update();
 }

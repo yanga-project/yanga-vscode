@@ -1,5 +1,20 @@
 import * as assert from 'assert';
-import { YangaCli, ExecFunction } from '../../yanga/YangaCli';
+import { EventEmitter } from 'events';
+import { YangaCli, ExecFunction, SpawnFunction } from '../../yanga/YangaCli';
+
+function makeMockSpawn(): { mockSpawn: SpawnFunction; capturedArgs: string[][] } {
+    const capturedArgs: string[][] = [];
+    const mockSpawn: SpawnFunction = (_command, args) => {
+        capturedArgs.push([...args]);
+        const child: any = new EventEmitter();
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+        // Simulate immediate clean exit so cli.run() resolves.
+        process.nextTick(() => child.emit('close', 0));
+        return child;
+    };
+    return { mockSpawn, capturedArgs };
+}
 
 suite('YangaCli Test Suite', () => {
     test('info handles valid v1.1 json', async () => {
@@ -59,6 +74,28 @@ suite('YangaCli Test Suite', () => {
         assert.strictEqual(res.model?.schema_version, '1.0');
         // flat-list build_targets coerced to {generic: [...], variant: [], component: []}
         assert.deepStrictEqual(res.model?.platforms[0].build_targets, { generic: ['unit_tests', 'report'], variant: [], component: [] });
+    });
+
+    test('run appends --pristine when options.pristine is true', async () => {
+        const { mockSpawn, capturedArgs } = makeMockSpawn();
+        const cli = new YangaCli('mock-yanga', undefined as any, mockSpawn);
+
+        await cli.run({ variant: 'V', platform: 'P', pristine: true }, '/dummy');
+
+        assert.strictEqual(capturedArgs.length, 1);
+        assert.ok(capturedArgs[0].includes('--pristine'), `expected --pristine in ${capturedArgs[0].join(' ')}`);
+    });
+
+    test('run omits --pristine when options.pristine is falsy', async () => {
+        const { mockSpawn, capturedArgs } = makeMockSpawn();
+        const cli = new YangaCli('mock-yanga', undefined as any, mockSpawn);
+
+        await cli.run({ variant: 'V', platform: 'P' }, '/dummy');
+        await cli.run({ variant: 'V', platform: 'P', pristine: false }, '/dummy');
+
+        for (const args of capturedArgs) {
+            assert.ok(!args.includes('--pristine'), `unexpected --pristine in ${args.join(' ')}`);
+        }
     });
 
     test('info handles json parse error', async () => {
