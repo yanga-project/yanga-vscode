@@ -115,16 +115,9 @@ The active selections (variant, platform, build type, variant build target, comp
 
 ## Install
 
-This extension is **not published to the Visual Studio Marketplace or Open VSX**. Publishing to the Marketplace requires an Azure DevOps organization, which in turn requires an Azure subscription tied to a payment method that the Azure signup flow refused to accept, without explanation, for the maintainer. Rather than spend more time fighting that flow, releases are distributed as `.vsix` files attached to [GitHub Releases](https://github.com/yanga-project/yanga-vscode/releases).
+Install **Yanga** (`yanga-project.yanga-vscode`) from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=yanga-project.yanga-vscode): search for "Yanga" in the Extensions view, or run `code --install-extension yanga-project.yanga-vscode`.
 
-To install:
-
-1. Download the latest `yanga-vscode-<version>.vsix` from the [Releases page](https://github.com/yanga-project/yanga-vscode/releases).
-2. In VS Code, open the Extensions view, click the `…` menu, choose **Install from VSIX…**, and select the downloaded file.
-   - Or from the command line: `code --install-extension yanga-vscode-<version>.vsix`.
-3. Reload the window if prompted.
-
-VS Code does not auto-update extensions installed from a VSIX, so re-run the steps above when a new release is published. Watch the repo on GitHub to get a notification.
+Each release is also attached as a `.vsix` to [GitHub Releases](https://github.com/yanga-project/yanga-vscode/releases). To install one, open the Extensions view, click the `…` menu, choose **Install from VSIX…**, and select the file.
 
 ## Getting started
 
