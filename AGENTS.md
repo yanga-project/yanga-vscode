@@ -18,7 +18,7 @@ This file provides guidance to coding agents working in this repository.
 
 - Releases are automated by `semantic-release` from `main` (see `.releaserc.json`): version bump → `CHANGELOG.md` → `vsce package` → GitHub release with `.vsix` asset → release commit. Don't bump the version manually.
 - Commit messages must be Conventional Commits (`commitlint` + Husky `commit-msg`). `feat:` / `fix:` drive minor/patch bumps; `BREAKING CHANGE:` drives major. Commits containing `[skip ci]` (the release commit) are exempt.
-- The extension is **not on the Marketplace**. Distribution is GitHub Release `.vsix` only.
+- The release workflow publishes each release to the Marketplace with trusted publishing (`vsce publish --oidc`), so there is no token secret. The `.vsix` is also attached to the GitHub release.
 
 ## Architecture
 
