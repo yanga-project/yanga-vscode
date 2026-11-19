@@ -10,7 +10,8 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "npx vsce package ${nextRelease.version} --no-git-tag-version --out yanga-vscode-${nextRelease.version}.vsix"
+        "prepareCmd": "npx vsce package ${nextRelease.version} --no-git-tag-version --out yanga-vscode-${nextRelease.version}.vsix",
+        "publishCmd": "npx vsce publish --oidc --packagePath yanga-vscode-${nextRelease.version}.vsix"
       }
     ],
     [
